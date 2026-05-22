@@ -1,0 +1,17 @@
+# Secrets
+.env
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+venv/
+.venv/
+
+# Local vector DB/runtime artifacts
+vector_store/chroma.sqlite3
+vector_store/*/data_level0.bin
+vector_store/*/header.bin
+vector_store/*/length.bin
+vector_store/*/link_lists.bin
