@@ -123,3 +123,29 @@ def generate_summary(query):
     )
 
     return response["message"]["content"]
+
+# --------------------------------
+# GENERATE SHORT SUMMARY
+# --------------------------------
+def generate_short_summary(summary):
+
+    prompt = f"""
+    Shorten the following summary into less than 250 characters.
+
+    Summary:
+    {summary}
+    """
+
+    response = ollama.chat(
+        model="llama3",
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ]
+    )
+
+    short_summary = response["message"]["content"]
+
+    return short_summary
