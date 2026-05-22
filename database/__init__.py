@@ -1,23 +1,17 @@
 from __future__ import annotations
 
-import logging
-
 from config import get_settings
-from database import DatabaseError, DatabaseManager
-
-logger = logging.getLogger(__name__)
+from database.manager import DatabaseError, DatabaseManager, SummaryRecord
 
 _settings = get_settings()
 _db_manager = DatabaseManager(_settings.sqlite_db_path)
 
 
 def initialize_database() -> None:
-    """Create required SQLite tables for summaries, queries, and notification logs."""
     _db_manager.initialize()
 
 
 def save_summary(query: str, summary: str, user_id: str | None = None, source_documents: str = "") -> None:
-    """Backward-compatible summary writer used by app.py."""
     active_user = user_id or _settings.default_user_id
     _db_manager.save_summary(
         user_id=active_user,
@@ -53,7 +47,6 @@ def save_notification_log(
 
 
 def view_summaries(limit: int = 20) -> list[tuple]:
-    """Backward-compatible read API returning tuples for legacy callers."""
     records = _db_manager.get_recent_summaries(limit=limit)
     return [
         (
@@ -71,6 +64,8 @@ def view_summaries(limit: int = 20) -> list[tuple]:
 
 __all__ = [
     "DatabaseError",
+    "DatabaseManager",
+    "SummaryRecord",
     "initialize_database",
     "save_summary",
     "save_query_history",

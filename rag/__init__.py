@@ -1,13 +1,10 @@
 from __future__ import annotations
 
-import logging
 from pathlib import Path
 from typing import Any
 
 from config import get_settings
-from rag import IngestionReport, RAGError, RAGService
-
-logger = logging.getLogger(__name__)
+from rag.pipeline import IngestionReport, RAGError, RAGResponse, RAGService, RetrievedChunk
 
 _settings = get_settings()
 _rag_service = RAGService(_settings)
@@ -90,7 +87,11 @@ def generate_short_summary(summary: str, channel: str = "whatsapp") -> str:
 
 
 __all__ = [
+    "IngestionReport",
     "RAGError",
+    "RAGResponse",
+    "RAGService",
+    "RetrievedChunk",
     "get_rag_service",
     "list_pdf_files",
     "ingest_pdfs",
