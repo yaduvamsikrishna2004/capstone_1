@@ -1,0 +1,133 @@
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(5, 10, 21, 0.65);
+  backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.modal {
+  width: min(520px, 100%);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-soft);
+  animation: modal-in 0.2s ease;
+}
+
+.modal-head {
+  padding: 14px 14px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-head h4 {
+  margin: 0;
+  font-family: var(--font-display);
+}
+
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+}
+
+.field span {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-soft);
+  margin-bottom: 5px;
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  min-height: 42px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-panel);
+  color: var(--text-main);
+  font-family: var(--font-ui);
+  padding: 9px 11px;
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.modal-actions {
+  padding: 0 14px 14px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.toast-stack {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toast {
+  min-width: 260px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-card);
+  animation: toast-in 0.2s ease;
+}
+
+.toast strong {
+  display: block;
+  font-size: 0.86rem;
+}
+
+.toast small {
+  color: var(--text-soft);
+  font-size: 0.78rem;
+}
+
+.toast.success {
+  border-color: rgba(54, 193, 133, 0.5);
+}
+
+.toast.error {
+  border-color: rgba(245, 111, 131, 0.5);
+}
+
+.toast.info {
+  border-color: rgba(60, 167, 255, 0.5);
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

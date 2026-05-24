@@ -4,6 +4,7 @@ Production-style Retrieval-Augmented Generation (RAG) project in Python with mul
 
 ## Features
 - Multi-PDF ingestion and chunking
+- DOCX + TXT ingestion for web upload flow
 - Sentence Transformer embeddings (`all-MiniLM-L6-v2`)
 - Chroma persistent vector store with metadata
 - RAG answers with Ollama + Llama3
@@ -11,6 +12,7 @@ Production-style Retrieval-Augmented Generation (RAG) project in Python with mul
 - SQLite history with timestamps
 - Twilio WhatsApp + SMS notifications
 - Gmail SMTP notifications (Google App Password)
+- FastAPI REST API for web frontend integration
 - Interactive CLI for ingestion, Q&A, history, and notifications
 
 ## Project Structure
@@ -83,6 +85,11 @@ Menu supports:
 - ask questions
 - send notifications
 - view recent summaries
+
+Run FastAPI server for web UI:
+```bash
+uvicorn api_server:app --reload --host 127.0.0.1 --port 8000
+```
 
 ## Gmail SMTP (App Password)
 1. Enable Google 2-Step Verification on sender account.

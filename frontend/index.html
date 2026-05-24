@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Document Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./css/main.css">
+  <link rel="stylesheet" href="./css/sidebar.css">
+  <link rel="stylesheet" href="./css/chat.css">
+  <link rel="stylesheet" href="./css/upload.css">
+  <link rel="stylesheet" href="./css/modal.css">
+  <link rel="stylesheet" href="./css/responsive.css">
+</head>
+<body>
+  <div class="app-shell" id="appShell">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="brand">
+          <div class="brand-mark">AI</div>
+          <div class="brand-copy">
+            <h1>DocAssist</h1>
+            <p>Document Copilot</p>
+          </div>
+        </div>
+        <button class="icon-btn collapse-btn" id="sidebarCollapseBtn" aria-label="Collapse sidebar">
+          <span></span>
+        </button>
+      </div>
+
+      <div class="sidebar-tools">
+        <button class="btn btn-primary btn-block" id="newChatBtn"><span>+ New Chat</span></button>
+        <label class="search-field">
+          <input id="chatSearchInput" type="search" placeholder="Search chats">
+        </label>
+      </div>
+
+      <div class="history-wrap" id="historyWrap">
+        <div class="history-head">Recent Chats</div>
+        <div class="history-list" id="chatHistoryList"></div>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="profile-chip">
+          <div class="avatar">YU</div>
+          <div class="profile-copy">
+            <strong>Workspace User</strong>
+            <small>web_user</small>
+          </div>
+        </div>
+        <div class="sidebar-actions">
+          <button class="btn btn-ghost btn-block" id="settingsBtn">Settings</button>
+          <button class="btn btn-ghost btn-block" id="logoutBtn">Logout</button>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main-panel">
+      <header class="top-nav">
+        <button class="icon-btn nav-mobile-toggle" id="mobileSidebarToggle" aria-label="Open menu"><span></span></button>
+        <div class="top-nav-title">
+          <h2>AI Document Assistant</h2>
+          <p id="documentStatus">No documents uploaded</p>
+        </div>
+        <div class="top-nav-actions">
+          <div class="health-pill" id="healthPill">
+            <span class="dot"></span>
+            <span>Checking API...</span>
+          </div>
+          <button class="btn btn-ghost drawer-toggle" id="documentDrawerToggle" aria-label="Open document panel">Document Panel</button>
+          <button class="icon-btn" id="themeToggleBtn" aria-label="Toggle theme"><span class="theme-icon"></span></button>
+        </div>
+      </header>
+
+      <section class="conversation-surface card">
+        <section class="welcome-screen" id="welcomeScreen">
+          <h3>AI Document Assistant</h3>
+          <p>Upload documents and ask questions instantly</p>
+          <div class="prompt-cards" id="suggestedPromptCards">
+            <button class="prompt-card" data-prompt="Summarize all uploaded documents into an executive briefing.">Summarize document</button>
+            <button class="prompt-card" data-prompt="Extract key points and present them as concise bullet points.">Extract key points</button>
+            <button class="prompt-card" data-prompt="Generate insights and notable trends from the uploaded documents.">Generate insights</button>
+            <button class="prompt-card" data-prompt="I want to ask detailed questions about specific sections in these files.">Ask questions</button>
+          </div>
+        </section>
+
+        <section class="upload-stage" id="uploadStage">
+          <div class="upload-panel" id="uploadPanel">
+            <div class="upload-head">
+              <h4>Drag files here</h4>
+              <p>PDF, DOCX, TXT supported</p>
+            </div>
+            <div class="dropzone" id="dropzone">
+              <input id="fileInput" type="file" multiple accept=".pdf,.docx,.txt" hidden>
+              <div class="dropzone-icon"></div>
+              <p><strong>Drop files here</strong> or click to browse</p>
+              <small>Supports multi-file upload</small>
+            </div>
+            <div class="upload-queue" id="uploadQueue"></div>
+            <div class="upload-actions">
+              <button class="btn btn-primary" id="uploadNowBtn">Upload Files</button>
+              <button class="btn btn-ghost" id="clearUploadQueueBtn">Clear Queue</button>
+            </div>
+          </div>
+        </section>
+
+        <div class="file-chip-strip hidden" id="fileChipStrip">
+          <div class="chip-list" id="fileChipList"></div>
+          <button class="btn btn-ghost" id="addFileChipBtn">+ Add File</button>
+        </div>
+
+        <section class="chat-panel">
+          <div class="chat-list" id="chatMessages"></div>
+          <div class="typing-row hidden" id="typingIndicator">
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <span>Assistant is typing...</span>
+          </div>
+          <button class="btn btn-ghost load-older-btn hidden" id="loadOlderMessagesBtn">Load older messages</button>
+
+          <div class="chat-input-shell">
+            <button class="icon-btn" id="attachFromComposerBtn" aria-label="Attach files"><span class="paperclip"></span></button>
+            <label class="chat-textarea-wrap">
+              <textarea id="chatInput" rows="1" maxlength="8000" placeholder="Ask about your documents..."></textarea>
+            </label>
+            <button class="icon-btn" id="voicePlaceholderBtn" aria-label="Voice input"><span class="mic"></span></button>
+            <div class="chat-input-meta">
+              <span id="charCount">0 / 8000</span>
+              <button class="btn btn-primary send-btn" id="sendBtn" disabled>Send</button>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+  </div>
+
+  <div class="drawer-backdrop hidden" id="drawerBackdrop"></div>
+  <aside class="document-drawer" id="documentDrawer">
+    <div class="drawer-head">
+      <h4>Document Panel</h4>
+      <button class="icon-btn" id="documentDrawerClose" aria-label="Close document panel">x</button>
+    </div>
+    <section class="drawer-section">
+      <h5>Uploaded Files</h5>
+      <div class="document-list" id="documentList"></div>
+    </section>
+    <section class="drawer-section">
+      <h5>Quick Actions</h5>
+      <div class="quick-actions">
+        <button class="btn btn-secondary quick-action" data-prompt="Summarize the uploaded documents in 5 bullet points.">Summarize</button>
+        <button class="btn btn-secondary quick-action" data-prompt="Extract key points with section-wise headings.">Extract key points</button>
+        <button class="btn btn-secondary quick-action" data-prompt="Generate a list of important questions this document can answer.">Ask questions</button>
+      </div>
+    </section>
+    <section class="drawer-section">
+      <h5>Share Response</h5>
+      <div class="quick-actions">
+        <button class="btn btn-secondary" data-modal-target="emailModal">Send Email</button>
+        <button class="btn btn-secondary" data-modal-target="whatsappModal">Send WhatsApp</button>
+        <button class="btn btn-secondary" data-modal-target="smsModal">Send SMS</button>
+      </div>
+    </section>
+    <section class="drawer-section">
+      <h5>Server History</h5>
+      <div class="server-history" id="serverHistoryList"></div>
+      <button class="btn btn-ghost btn-block" id="loadMoreHistoryBtn">Load More</button>
+    </section>
+  </aside>
+
+  <div class="modal-overlay hidden" id="settingsModal">
+    <div class="modal">
+      <div class="modal-head">
+        <h4>Settings</h4>
+        <button class="icon-btn modal-close" data-close-modal="settingsModal">x</button>
+      </div>
+      <div class="modal-body">
+        <label class="field">
+          <span>API Base URL</span>
+          <input type="url" id="apiBaseInput" placeholder="http://localhost:8000">
+        </label>
+        <label class="field">
+          <span>User ID</span>
+          <input type="text" id="userIdInput" placeholder="web_user">
+        </label>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" id="saveSettingsBtn">Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="emailModal">
+    <div class="modal">
+      <div class="modal-head">
+        <h4>Send Email</h4>
+        <button class="icon-btn modal-close" data-close-modal="emailModal">x</button>
+      </div>
+      <form class="modal-body" id="emailForm">
+        <label class="field"><span>Recipient</span><input type="email" name="recipient" required placeholder="name@example.com"></label>
+        <label class="field"><span>Subject</span><input type="text" name="subject" required placeholder="Summary from AI Document Assistant"></label>
+        <label class="field"><span>Message</span><textarea name="message" rows="5" required></textarea></label>
+        <div class="modal-actions"><button class="btn btn-primary" type="submit">Send Email</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="whatsappModal">
+    <div class="modal">
+      <div class="modal-head">
+        <h4>Send WhatsApp</h4>
+        <button class="icon-btn modal-close" data-close-modal="whatsappModal">x</button>
+      </div>
+      <form class="modal-body" id="whatsappForm">
+        <label class="field"><span>Recipient</span><input type="text" name="recipient" required placeholder="+14155552671"></label>
+        <label class="field"><span>Message</span><textarea name="message" rows="5" required></textarea></label>
+        <div class="modal-actions"><button class="btn btn-primary" type="submit">Send WhatsApp</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="smsModal">
+    <div class="modal">
+      <div class="modal-head">
+        <h4>Send SMS</h4>
+        <button class="icon-btn modal-close" data-close-modal="smsModal">x</button>
+      </div>
+      <form class="modal-body" id="smsForm">
+        <label class="field"><span>Recipient</span><input type="text" name="recipient" required placeholder="+14155552671"></label>
+        <label class="field"><span>Message</span><textarea name="message" rows="5" required></textarea></label>
+        <div class="modal-actions"><button class="btn btn-primary" type="submit">Send SMS</button></div>
+      </form>
+    </div>
+  </div>
+
+  <div class="toast-stack" id="toastStack"></div>
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

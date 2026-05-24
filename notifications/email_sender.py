@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import smtplib
 import socket
 import ssl
@@ -18,6 +19,7 @@ SMTP_PORT = 587
 SMTP_TIMEOUT_SECONDS = 20
 MAX_RETRIES = 2
 RETRY_DELAY_SECONDS = 2
+EMAIL_REGEX = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
 
 
 def _build_message(sender: str, receiver: str, subject: str, body: str) -> MIMEMultipart:
@@ -29,13 +31,14 @@ def _build_message(sender: str, receiver: str, subject: str, body: str) -> MIMEM
     return msg
 
 
-def send_email(body: str, subject: str = "AI Generated Summary") -> NotificationResult:
+def send_email(body: str, subject: str = "AI Generated Summary", recipient: str | None = None) -> NotificationResult:
     settings = get_settings()
+    target_recipient = (recipient or settings.receiver_email).strip()
 
     required = {
         "EMAIL_ADDRESS": settings.email_address,
         "EMAIL_APP_PASSWORD or EMAIL_PASSWORD": settings.email_app_password,
-        "RECEIVER_EMAIL": settings.receiver_email,
+        "RECEIVER_EMAIL": target_recipient,
     }
     missing = [key for key, value in required.items() if not value]
     if missing:
@@ -43,7 +46,10 @@ def send_email(body: str, subject: str = "AI Generated Summary") -> Notification
         logger.error(error_message)
         raise NotificationError(error_message)
 
-    msg = _build_message(settings.email_address, settings.receiver_email, subject, body)
+    if not EMAIL_REGEX.fullmatch(target_recipient):
+        raise NotificationError("Recipient email address format is invalid.")
+
+    msg = _build_message(settings.email_address, target_recipient, subject, body)
 
     for attempt in range(1, MAX_RETRIES + 1):
         try:
@@ -55,11 +61,11 @@ def send_email(body: str, subject: str = "AI Generated Summary") -> Notification
                 server.login(settings.email_address, settings.email_app_password)
                 server.send_message(msg)
 
-            logger.info("Email sent successfully to %s", settings.receiver_email)
+            logger.info("Email sent successfully to %s", target_recipient)
             return NotificationResult(
                 success=True,
                 channel="email",
-                recipient=settings.receiver_email,
+                recipient=target_recipient,
                 provider_id="smtp",
             )
 

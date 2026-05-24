@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import shutil
+from datetime import datetime
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -68,18 +70,78 @@ class RAGService:
             separators=["\n\n", "\n", ". ", " ", ""],
         )
 
-        try:
-            chroma_client = chromadb.PersistentClient(path=str(settings.vector_store_dir))
-            self.collection: Collection = chroma_client.get_or_create_collection(
-                name=settings.chroma_collection_name,
-                metadata={"description": "Capstone RAG document chunks"},
-            )
-        except Exception as error:
-            logger.exception("Failed to initialize Chroma collection: %s", error)
-            raise RAGError(str(error)) from error
+        self.collection = self._initialize_collection_with_recovery()
 
         self.query_cache: dict[str, RAGResponse] = {}
         self.conversation_history: dict[str, list[dict[str, str]]] = {}
+
+    def _initialize_collection_with_recovery(self) -> Collection:
+        """
+        Build Chroma collection with one automatic recovery pass.
+
+        This handles cases where local vector-store metadata becomes corrupted
+        or incompatible with the installed Chroma binary.
+        """
+        try:
+            return self._create_collection()
+        except (KeyboardInterrupt, SystemExit):
+            raise
+        except BaseException as error:
+            # pyo3_runtime.PanicException can bypass Exception and crash startup.
+            if not self._is_recoverable_chroma_startup_failure(error):
+                logger.exception("Failed to initialize Chroma collection: %s", error)
+                raise RAGError(str(error)) from error
+
+            backup_dir = self._backup_vector_store_dir()
+            logger.warning(
+                "Recovered from Chroma startup failure by resetting vector store. "
+                "Previous store moved to: %s",
+                backup_dir,
+            )
+            try:
+                return self._create_collection()
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except BaseException as retry_error:
+                logger.exception("Chroma recovery retry failed: %s", retry_error)
+                raise RAGError(str(retry_error)) from retry_error
+
+    def _create_collection(self) -> Collection:
+        chroma_client = chromadb.PersistentClient(path=str(self.settings.vector_store_dir))
+        return chroma_client.get_or_create_collection(
+            name=self.settings.chroma_collection_name,
+            metadata={"description": "Capstone RAG document chunks"},
+        )
+
+    @staticmethod
+    def _is_recoverable_chroma_startup_failure(error: BaseException) -> bool:
+        text = f"{type(error).__name__}: {error}".lower()
+        signals = [
+            "panicexception",
+            "pyo3_runtime",
+            "range start index",
+            "sqlite",
+            "chromadb",
+        ]
+        return any(signal in text for signal in signals)
+
+    def _backup_vector_store_dir(self) -> Path:
+        vector_dir = self.settings.vector_store_dir
+        vector_dir.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_dir = vector_dir.with_name(f"{vector_dir.name}_corrupt_backup_{timestamp}")
+
+        if backup_dir.exists():
+            shutil.rmtree(backup_dir, ignore_errors=True)
+
+        try:
+            shutil.move(str(vector_dir), str(backup_dir))
+        except Exception:
+            shutil.rmtree(vector_dir, ignore_errors=True)
+            backup_dir.mkdir(parents=True, exist_ok=True)
+
+        vector_dir.mkdir(parents=True, exist_ok=True)
+        return backup_dir
 
     def list_available_pdfs(self) -> list[Path]:
         return sorted(self.settings.documents_dir.glob("*.pdf"))
@@ -110,49 +172,35 @@ class RAGService:
             raise RAGError("Chunking produced zero chunks.")
         return chunks
 
-    @staticmethod
-    def _chunk_id(source: str, page: int, chunk_index: int, text: str) -> str:
-        payload = f"{source}|{page}|{chunk_index}|{text}".encode("utf-8", errors="ignore")
-        return hashlib.sha256(payload).hexdigest()
-
-    def _existing_ids(self, ids: list[str]) -> set[str]:
-        if not ids:
-            return set()
-
-        try:
-            result = self.collection.get(ids=ids, include=[])
-            return set(result.get("ids", []))
-        except Exception:
-            return set()
-
-    def ingest_pdf(self, file_path: str | Path) -> IngestionReport:
-        documents = self.load_pdf(file_path)
-        chunks = self.split_documents(documents)
-
+    def _build_chunks_for_source(self, source_name: str, raw_texts: list[tuple[str, int]]) -> IngestionReport:
         chunk_texts: list[str] = []
         chunk_ids: list[str] = []
         metadatas: list[dict[str, Any]] = []
 
-        source_name = Path(file_path).name
-
-        for chunk_index, chunk in enumerate(chunks):
-            text = normalize_whitespace(chunk.page_content)
+        running_chunk_index = 0
+        for raw_text, page in raw_texts:
+            text = normalize_whitespace(raw_text)
             if not text:
                 continue
 
-            page = int(chunk.metadata.get("page", -1)) if chunk.metadata else -1
-            chunk_id = self._chunk_id(source_name, page, chunk_index, text)
+            split_chunks = self.text_splitter.split_text(text)
+            for split_text in split_chunks:
+                normalized = normalize_whitespace(split_text)
+                if not normalized:
+                    continue
 
-            chunk_texts.append(text)
-            chunk_ids.append(chunk_id)
-            metadatas.append(
-                {
-                    "source": source_name,
-                    "page": page,
-                    "chunk_index": chunk_index,
-                    "char_count": len(text),
-                }
-            )
+                chunk_id = self._chunk_id(source_name, page, running_chunk_index, normalized)
+                chunk_texts.append(normalized)
+                chunk_ids.append(chunk_id)
+                metadatas.append(
+                    {
+                        "source": source_name,
+                        "page": page,
+                        "chunk_index": running_chunk_index,
+                        "char_count": len(normalized),
+                    }
+                )
+                running_chunk_index += 1
 
         if not chunk_texts:
             raise RAGError("All chunks were empty after normalization.")
@@ -163,12 +211,12 @@ class RAGService:
         new_ids: list[str] = []
         new_metadatas: list[dict[str, Any]] = []
 
-        for i, chunk_id in enumerate(chunk_ids):
+        for idx, chunk_id in enumerate(chunk_ids):
             if chunk_id in existing:
                 continue
-            new_texts.append(chunk_texts[i])
+            new_texts.append(chunk_texts[idx])
             new_ids.append(chunk_id)
-            new_metadatas.append(metadatas[i])
+            new_metadatas.append(metadatas[idx])
 
         if new_texts:
             try:
@@ -189,6 +237,33 @@ class RAGService:
             chunks_indexed=len(new_texts),
             chunks_skipped=len(chunk_texts) - len(new_texts),
         )
+
+    @staticmethod
+    def _chunk_id(source: str, page: int, chunk_index: int, text: str) -> str:
+        payload = f"{source}|{page}|{chunk_index}|{text}".encode("utf-8", errors="ignore")
+        return hashlib.sha256(payload).hexdigest()
+
+    def _existing_ids(self, ids: list[str]) -> set[str]:
+        if not ids:
+            return set()
+
+        try:
+            result = self.collection.get(ids=ids, include=[])
+            return set(result.get("ids", []))
+        except Exception:
+            return set()
+
+    def ingest_pdf(self, file_path: str | Path) -> IngestionReport:
+        documents = self.load_pdf(file_path)
+        source_name = Path(file_path).name
+        raw_texts: list[tuple[str, int]] = []
+        for document in documents:
+            page = int(document.metadata.get("page", -1)) if getattr(document, "metadata", None) else -1
+            raw_texts.append((document.page_content, page))
+        return self._build_chunks_for_source(source_name=source_name, raw_texts=raw_texts)
+
+    def ingest_text_document(self, source_name: str, text: str) -> IngestionReport:
+        return self._build_chunks_for_source(source_name=source_name, raw_texts=[(text, -1)])
 
     def ingest_documents(self, file_paths: list[str | Path]) -> IngestionReport:
         total_processed = 0

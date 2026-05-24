@@ -1,0 +1,96 @@
+@media (max-width: 1280px) {
+  .prompt-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .chat-message {
+    max-width: min(88%, 900px);
+  }
+}
+
+@media (max-width: 1080px) {
+  .app-shell {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 10px;
+  }
+
+  .sidebar {
+    position: fixed;
+    z-index: 30;
+    left: 10px;
+    top: 10px;
+    bottom: 10px;
+    width: min(300px, calc(100vw - 20px));
+    height: auto;
+    transform: translateX(-115%);
+  }
+
+  body.sidebar-mobile-open .sidebar {
+    transform: translateX(0);
+  }
+
+  .nav-mobile-toggle {
+    display: inline-flex;
+  }
+
+  .health-pill {
+    display: none;
+  }
+
+  .document-drawer {
+    width: min(370px, calc(100vw - 16px));
+    top: 8px;
+    right: 8px;
+    bottom: 8px;
+  }
+
+  .conversation-surface {
+    min-height: calc(100vh - 86px);
+  }
+}
+
+@media (max-width: 760px) {
+  .top-nav {
+    padding: 10px;
+  }
+
+  .top-nav-title h2 {
+    font-size: 1rem;
+  }
+
+  .prompt-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .upload-stage,
+  .chat-panel,
+  .file-chip-strip,
+  .welcome-screen {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+
+  .chat-message {
+    max-width: 96%;
+  }
+
+  .chat-input-shell {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .chat-input-meta {
+    grid-column: 1 / -1;
+    justify-content: space-between;
+  }
+
+  .drawer-toggle {
+    display: none;
+  }
+
+  .document-drawer {
+    width: calc(100vw - 12px);
+    right: 6px;
+    top: 6px;
+    bottom: 6px;
+  }
+}

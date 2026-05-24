@@ -7,32 +7,35 @@ from config import get_settings
 from rag.pipeline import IngestionReport, RAGError, RAGResponse, RAGService, RetrievedChunk
 
 _settings = get_settings()
-_rag_service = RAGService(_settings)
+_rag_service: RAGService | None = None
 
 
 def get_rag_service() -> RAGService:
+    global _rag_service
+    if _rag_service is None:
+        _rag_service = RAGService(_settings)
     return _rag_service
 
 
 def list_pdf_files() -> list[Path]:
-    return _rag_service.list_available_pdfs()
+    return get_rag_service().list_available_pdfs()
 
 
 def ingest_pdfs(file_paths: list[str | Path]) -> IngestionReport:
-    return _rag_service.ingest_documents(file_paths)
+    return get_rag_service().ingest_documents(file_paths)
 
 
 def load_pdf(file_path: str | Path) -> list[Any]:
-    return _rag_service.load_pdf(file_path)
+    return get_rag_service().load_pdf(file_path)
 
 
 def split_documents(documents: list[Any]) -> list[Any]:
-    return _rag_service.split_documents(documents)
+    return get_rag_service().split_documents(documents)
 
 
 def create_embeddings(chunks: list[Any]) -> tuple[list[str], list[list[float]]]:
     texts = [chunk.page_content for chunk in chunks if getattr(chunk, "page_content", "").strip()]
-    vectors = _rag_service.embedding_model.encode(texts, normalize_embeddings=True).tolist() if texts else []
+    vectors = get_rag_service().embedding_model.encode(texts, normalize_embeddings=True).tolist() if texts else []
     return texts, vectors
 
 
@@ -43,7 +46,7 @@ def store_embeddings(texts: list[str], embeddings: list[list[float]]) -> None:
     ids: list[str] = []
     metadatas: list[dict[str, Any]] = []
     for index, text in enumerate(texts):
-        chunk_id = _rag_service._chunk_id("manual", -1, index, text)
+        chunk_id = get_rag_service()._chunk_id("manual", -1, index, text)
         ids.append(chunk_id)
         metadatas.append(
             {
@@ -54,7 +57,7 @@ def store_embeddings(texts: list[str], embeddings: list[list[float]]) -> None:
             }
         )
 
-    _rag_service.collection.upsert(
+    get_rag_service().collection.upsert(
         ids=ids,
         documents=texts,
         embeddings=embeddings,
@@ -63,7 +66,7 @@ def store_embeddings(texts: list[str], embeddings: list[list[float]]) -> None:
 
 
 def retrieve_documents(query: str, n_results: int = 4) -> dict[str, Any]:
-    chunks = _rag_service.retrieve_documents(query, n_results=n_results)
+    chunks = get_rag_service().retrieve_documents(query, n_results=n_results)
 
     documents = [[chunk.text for chunk in chunks]]
     metadatas = [[{"source": chunk.source, "page": chunk.page} for chunk in chunks]]
@@ -78,12 +81,12 @@ def retrieve_documents(query: str, n_results: int = 4) -> dict[str, Any]:
 
 def generate_summary(query: str, user_id: str | None = None) -> str:
     active_user = user_id or _settings.default_user_id
-    response = _rag_service.answer_query(query, user_id=active_user)
+    response = get_rag_service().answer_query(query, user_id=active_user)
     return response.answer
 
 
 def generate_short_summary(summary: str, channel: str = "whatsapp") -> str:
-    return _rag_service.generate_short_summary(summary, channel=channel)
+    return get_rag_service().generate_short_summary(summary, channel=channel)
 
 
 __all__ = [
